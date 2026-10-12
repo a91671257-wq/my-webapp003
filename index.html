@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>외출 준비물 체크</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white/90 backdrop-blur-md p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-md border border-green-100">
+        
+        <h1 class="text-2xl font-extrabold text-green-600 text-center tracking-tight mb-3">외출 준비물 체크</h1>
+        
+        <div class="mb-4 overflow-hidden rounded-xl shadow-md">
+            <img src="watermarked_img_1cxa0e1cxa0e1cxa.png" 
+                 onerror="this.src='https://placehold.co/600x300/22c55e/ffffff?text=%EC%99%B8%EC%B6%96+%EC%A4%80%EB%B9%84%EB%AC%BC';" 
+                 alt="외출 풍경 이미지" 
+                 class="w-full h-44 object-cover transform hover:scale-105 transition duration-500">
+        </div>
+
+        <p class="text-gray-500 text-sm text-center mb-6">필요한 물품을 추가하고 안전하게 외출하세요!</p>
+        
+        <div class="flex gap-2 mb-6">
+            <input type="text" id="newItemInput" placeholder="추가할 준비물 입력..." 
+                   class="flex-grow px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition"
+                   onkeypress="handleKeyPress(event)">
+            <button onclick="addItem()" 
+                    class="px-5 py-2.5 bg-green-600 hover:bg-green-700 active:scale-95 text-white font-semibold rounded-xl text-sm shadow-md shadow-green-600/20 transition cursor-pointer">
+                추가
+            </button>
+        </div>
+
+        <div id="checklistContainer" class="space-y-2.5 mb-6 max-h-60 overflow-y-auto pr-1">
+            <!-- Items injected via JavaScript -->
+        </div>
+
+        <button onclick="checkPreparation()" 
+                class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold rounded-xl shadow-lg shadow-blue-600/25 transition cursor-pointer text-base">
+            준비 확인
+        </button>
+        
+        <div id="result" class="mt-4 text-center font-bold text-sm min-h-[40px] flex items-center justify-center rounded-xl transition-all"></div>
+    </div>
+
+    <script>
+        // Initial checklist state with required default items
+        let items = [
+            { id: 1, text: '휴대전화', checked: false },
+            { id: 2, text: '지갑', checked: false },
+            { id: 3, text: '물병', checked: false },
+            { id: 4, text: '우산', checked: false }
+        ];
+
+        // Render checklist items into the DOM
+        function renderList() {
+            const container = document.getElementById('checklistContainer');
+            container.innerHTML = '';
+
+            if (items.length === 0) {
+                container.innerHTML = '<div class="text-gray-400 text-center py-6 text-sm bg-gray-50 rounded-xl border border-dashed border-gray-200">등록된 준비물이 없습니다. 추가해 주세요!</div>';
+                return;
+            }
+
+            items.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'flex items-center justify-between bg-gray-50 hover:bg-gray-100/80 px-4 py-3 rounded-xl border border-gray-200/70 transition cursor-pointer group';
+                
+                itemDiv.innerHTML = `
+                    <div class="flex items-center gap-3 flex-grow" onclick="toggleItem(${item.id})">
+                        <input type="checkbox" id="chk-${item.id}" ${item.checked ? 'checked' : ''} 
+                               onchange="updateCheckState(${item.id}, this.checked)"
+                               class="w-5 h-5 accent-green-600 rounded cursor-pointer">
+                        <label for="chk-${item.id}" class="text-gray-700 font-medium text-sm sm:text-base cursor-pointer select-none flex-grow ${item.checked ? 'line-through text-gray-400' : ''}">
+                            ${item.text}
+                        </label>
+                    </div>
+                    <button onclick="event.stopPropagation(); deleteItem(${item.id})" 
+                            class="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition text-sm cursor-pointer" 
+                            title="삭제">
+                        ✕
+                    </button>
+                `;
+                container.appendChild(itemDiv);
+            });
+        }
+
+        // Update checkbox state on change
+        function updateCheckState(id, isChecked) {
+            const item = items.find(i => i.id === id);
+            if (item) {
+                item.checked = isChecked;
+                renderList();
+            }
+        }
+
+        // Toggle item status when clicking row
+        function toggleItem(id) {
+            const item = items.find(i => i.id === id);
+            if (item) {
+                item.checked = !item.checked;
+                renderList();
+            }
+        }
+
+        // Add a new checklist item
+        function addItem() {
+            const input = document.getElementById('newItemInput');
+            const text = input.value.trim();
+
+            if (text === '') {
+                showModalMessage('준비물 이름을 입력해주세요!', 'error');
+                return;
+            }
+
+            items.push({
+                id: Date.now(),
+                text: text,
+                checked: false
+            });
+
+            input.value = '';
+            document.getElementById('result').innerHTML = '';
+            renderList();
+        }
+
+        // Handle Enter keypress inside input field
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                addItem();
+            }
+        }
+
+        // Delete an item from the checklist
+        function deleteItem(id) {
+            items = items.filter(i => i.id !== id);
+            document.getElementById('result').innerHTML = '';
+            renderList();
+        }
+
+        // Helper function for showing feedback messages
+        function showModalMessage(msg, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'mt-4 text-center font-bold text-sm min-h-[40px] flex items-center justify-center rounded-xl fade-in p-3 ';
+            
+            if (type === 'success') {
+                resultDiv.classList.add('bg-green-50', 'text-green-700', 'border', 'border-green-200');
+            } else {
+                resultDiv.classList.add('bg-red-50', 'text-red-600', 'border', 'border-red-200');
+            }
+            resultDiv.innerText = msg;
+        }
+
+        // Verify if all preparation items are checked
+        function checkPreparation() {
+            if (items.length === 0) {
+                showModalMessage('⚠️ 등록된 준비물이 없습니다!', 'error');
+                return;
+            }
+
+            const allChecked = items.every(item => item.checked);
+
+            if (allChecked) {
+                showModalMessage('🎉 준비 완료! 안전하고 즐거운 외출 되세요!', 'success');
+            } else {
+                showModalMessage('⚠️ 아직 챙기지 못한 준비물이 있어요!', 'error');
+            }
+        }
+
+        // Initial render on page load
+        renderList();
+    </script>
+</body>
+</html>
