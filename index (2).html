@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>외출 준비물 체크리스트 🎒</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .item-enter {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .custom-checkbox:checked + span {
+            text-decoration: line-through;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100 transition-all">
+        
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-white text-center relative">
+            <div class="text-4xl mb-2">🎒</div>
+            <h1 class="text-2xl font-bold tracking-tight">외출 준비물 체크</h1>
+            <p class="text-blue-100 text-sm mt-1">깜빡하기 쉬운 물건들을 확인해 보세요!</p>
+        </div>
+
+        <!-- Progress Bar & Content Container -->
+        <div class="p-6 space-y-6">
+
+            <!-- Progress Section -->
+            <div>
+                <div class="flex justify-between items-center text-sm font-semibold text-slate-600 mb-2">
+                    <span>준비 진행률</span>
+                    <span id="progress-text" class="text-blue-600 font-bold">0%</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                    <div id="progress-bar" class="bg-blue-500 h-3 rounded-full transition-all duration-300 w-0"></div>
+                </div>
+            </div>
+
+            <!-- Add Item Form -->
+            <form id="add-item-form" class="flex gap-2">
+                <input 
+                    type="text" 
+                    id="new-item-input" 
+                    placeholder="새 준비물 추가 (예: 차키 🔑)" 
+                    class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all placeholder:text-slate-400"
+                    maxlength="20"
+                    required
+                >
+                <button 
+                    type="submit" 
+                    class="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shadow-md shadow-blue-500/20 flex items-center gap-1"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    추가
+                </button>
+            </form>
+
+            <!-- Checklist Items -->
+            <div class="space-y-2 max-h-80 overflow-y-auto pr-1" id="item-list">
+                <!-- Items will be generated dynamically -->
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="pt-2 space-y-3">
+                <button 
+                    id="check-btn" 
+                    onclick="verifyChecklist()" 
+                    class="w-full bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition-all text-center flex items-center justify-center gap-2"
+                >
+                    <span>🚀</span> 준비 확인
+                </button>
+
+                <button 
+                    onclick="resetAll()" 
+                    class="w-full text-slate-400 hover:text-slate-600 text-xs font-medium py-1 transition-colors text-center"
+                >
+                    전체 체크 해제
+                </button>
+            </div>
+
+            <!-- Result Message Modal -->
+            <div id="result-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl space-y-4 item-enter">
+                    <div id="modal-icon" class="text-5xl">🎉</div>
+                    <h3 id="modal-title" class="text-xl font-bold text-slate-800">준비 완료!</h3>
+                    <p id="modal-message" class="text-slate-600 text-sm leading-relaxed">모든 물건을 잘 챙기셨습니다. 즐거운 외출 되세요!</p>
+                    <button 
+                        onclick="closeModal()" 
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl transition-all shadow-md shadow-blue-500/20"
+                    >
+                        확인
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Default list of essential items
+        const defaultItems = [
+            { id: 1, text: '휴대전화 📱', checked: false },
+            { id: 2, text: '지갑 👛', checked: false },
+            { id: 3, text: '물병 🍼', checked: false },
+            { id: 4, text: '우산 ☂️', checked: false }
+        ];
+
+        let items = [...defaultItems];
+
+        const itemListEl = document.getElementById('item-list');
+        const progressBarEl = document.getElementById('progress-bar');
+        const progressTextEl = document.getElementById('progress-text');
+        const addItemForm = document.getElementById('add-item-form');
+        const newItemInput = document.getElementById('new-item-input');
+        const modal = document.getElementById('result-modal');
+
+        // Render checklist items
+        function renderItems() {
+            itemListEl.innerHTML = '';
+
+            if (items.length === 0) {
+                itemListEl.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 text-sm">
+                        챙길 물건이 없습니다.<br>새로운 항목을 추가해 보세요!
+                    </div>
+                `;
+            }
+
+            items.forEach((item) => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'flex items-center justify-between p-3.5 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100/70 transition-all item-enter group';
+                
+                itemEl.innerHTML = `
+                    <label class="flex items-center gap-3 cursor-pointer flex-1 min-w-0 pr-2">
+                        <input 
+                            type="checkbox" 
+                            ${item.checked ? 'checked' : ''} 
+                            onchange="toggleCheck(${item.id})"
+                            class="custom-checkbox w-5 h-5 rounded-md text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer transition-all"
+                        >
+                        <span class="text-slate-700 font-medium text-sm truncate select-none transition-all ${item.checked ? 'line-through text-slate-400' : ''}">
+                            ${escapeHtml(item.text)}
+                        </span>
+                    </label>
+                    <button 
+                        onclick="deleteItem(${item.id})" 
+                        class="text-slate-300 hover:text-red-500 p-1 rounded-lg hover:bg-white transition-all opacity-80 group-hover:opacity-100"
+                        title="삭제"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    </button>
+                `;
+                itemListEl.appendChild(itemEl);
+            });
+
+            updateProgress();
+        }
+
+        // Toggle item checkbox status
+        function toggleCheck(id) {
+            items = items.map(item => 
+                item.id === id ? { ...item, checked: !item.checked } : item
+            );
+            renderItems();
+        }
+
+        // Add new item to list
+        addItemForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = newItemInput.value.trim();
+            if (!text) return;
+
+            const newItem = {
+                id: Date.now(),
+                text: text,
+                checked: false
+            };
+
+            items.push(newItem);
+            newItemInput.value = '';
+            renderItems();
+        });
+
+        // Delete item from list
+        function deleteItem(id) {
+            items = items.filter(item => item.id !== id);
+            renderItems();
+        }
+
+        // Reset all checkboxes
+        function resetAll() {
+            items = items.map(item => ({ ...item, checked: false }));
+            renderItems();
+        }
+
+        // Update progress bar
+        function updateProgress() {
+            if (items.length === 0) {
+                progressBarEl.style.width = '0%';
+                progressTextEl.textContent = '0%';
+                return;
+            }
+
+            const checkedCount = items.filter(item => item.checked).length;
+            const percentage = Math.round((checkedCount / items.length) * 100);
+
+            progressBarEl.style.width = `${percentage}%`;
+            progressTextEl.textContent = `${percentage}%`;
+        }
+
+        // Verify list completeness
+        function verifyChecklist() {
+            const totalCount = items.length;
+            if (totalCount === 0) {
+                showModal('❓', '준비물 없음', '확인할 준비물이 목록에 없습니다.');
+                return;
+            }
+
+            const uncheckedItems = items.filter(item => !item.checked);
+
+            if (uncheckedItems.length === 0) {
+                // Success confetti effect
+                if (typeof confetti === 'function') {
+                    confetti({
+                        particleCount: 80,
+                        spread: 60,
+                        origin: { y: 0.6 }
+                    });
+                }
+                showModal('🎉', '준비 완료!', '모든 물건을 잘 챙기셨습니다.<br>즐거운 외출 되세요!');
+            } else {
+                const count = uncheckedItems.length;
+                showModal(
+                    '⚠️', 
+                    '아직 챙기지 않은 물건이 있어요!', 
+                    `아직 챙기지 않은 물건이 <strong class="text-blue-600">${count}개</strong> 남았습니다.<br>다시 한번 확인해 보세요.`
+                );
+            }
+        }
+
+        // Modal triggers
+        function showModal(icon, title, message) {
+            document.getElementById('modal-icon').innerHTML = icon;
+            document.getElementById('modal-title').innerHTML = title;
+            document.getElementById('modal-message').innerHTML = message;
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+        }
+
+        // Utility: Prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initial setup
+        window.onload = function() {
+            renderItems();
+        };
+    </script>
+</body>
+</html>
